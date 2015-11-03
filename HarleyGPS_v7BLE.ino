@@ -1,23 +1,32 @@
 /** Program Name:    HarleyGPS_v.6
  * Written by:      Jesse Ragsdale
- * Date:            2015/01/29
+ * Date:            2015/11/03
  *
  * Credits:         Adafruit, LadyAda, Becky Stern, and Tyler Cooper
  *
  * Goal:            Record and display Average Speed, Maximum Speed, and distance
- *                  traveled in mph. 
+ *                  traveled in mph. Transmit info to iPhone via Bluefruit
  */
 
 #include <Adafruit_GPS.h>
 #include <math.h>
 #include <SoftwareSerial.h>
-//#include <LiquidCrystal.h>
+#include <string.h>
+#include <Arduino.h>
+#include <SPI.h>
+#include "Adafruit_BLE.h"
+#include "Adafruit_BluefruitLE_SPI.h"
+#include "Adafruit_BluefruitLE_UART.h"
+#include "BluefruitConfig.h"
 
-//LiquidCrystal lcd(7, 8, 9, 10, 11, 12);
+#define FACTORYRESET_ENABLE         0
+#define MINIMUM_FIRMWARE_VERSION    "0.6.6"
+#define MODE_LED_BEHAVIOUR          "MODE"
+#define GPSECHO                     true
+
 SoftwareSerial mySerial(2, 3);
 Adafruit_GPS GPS(&mySerial);
-
-#define GPSECHO true
+Adafruit_BluefruitLE_UART ble(Serial1, BLUEFRUIT_UART_MODE_PIN);
 
 boolean usingInterrupt = false;
 void useInterrupt(boolean);
@@ -33,43 +42,56 @@ double change = 0;
 double deltaDistance = 0;
 double distance = 0;
 
+void error(const __FlashStringHelper*err) {
+  Serial.println(err);
+  while (1);
+}
+
 void setup() {
-  //pinMode(13, OUTPUT);
   while (!Serial);
   Serial.begin(115200);
-  //lcd.begin(16, 2);
   GPS.begin(9600);
 
+  if (ble.begin(VERBOSE_MODE) ) {
+    error(F("Couldn't find bluefruit, is it in CMD mode? Wiring good?"));
+  }
+  
   useInterrupt(true);  // Keeps track of if we use interrupt - off by default
   delay(500);
 
   Serial.println("Adafruit GPS Lib Test, HarleyGPS");
-  //lcd.print("HarleyGPS v.6");
-  //lcd.setCursor(0, 1);
-  //lcd.print("Ready to run?");
-  //delay(1000);
+  ble.println("HarleyGPS Testing...");
+
+  if (FACTORYRESET_ENABLE) {
+    Serial.println("Factory Resetting...");
+    if (! ble.factoryReset() ) {
+      error(F("Cannae reset, dangnabit"));
+    }
+  }
+
+  ble.echo(false); //disable command echo from bluefruit
+  ble.info(); //print bluefruit info
 
   GPS.sendCommand(PMTK_SET_NMEA_OUTPUT_RMCGGA); // Request only RMCGGA data
   GPS.sendCommand(PMTK_SET_NMEA_UPDATE_5HZ); // Updates at 5 hertz
   GPS.sendCommand(PGCMD_ANTENNA); // Sets to internal antenna
 
   Serial.println("Harley GPS: Starting...");
-  //lcd.setCursor(0, 1);
-  //lcd.print("Starting GPS...");
+  ble.println("Harley GPS: Starting... (BLEprintout");
 
   while (GPS.fix = 1) {
-    //lcd.clear();
-    //lcd.setCursor(0, 0);
     Serial.print("Start logging...");
+    ble.println("Start logging... (BLEprintout)");
     if (GPS.LOCUS_StartLogger()) {
       GPS.LOCUS_StartLogger();
       Serial.print("Signal found!");
-      //digitalWrite(13, HIGH);
+      ble.println("Signal found! 9BLEprintout)");
       latA = (GPS.latitudeDegrees);
       longA = (GPS.longitudeDegrees);
       break;
     } else {
       Serial.println("No signal found, dammit");
+      ble.println("No signal found, damnit (BLEprintout)");
     }
   }
 }
