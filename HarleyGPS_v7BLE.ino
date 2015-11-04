@@ -24,7 +24,7 @@
 #define MODE_LED_BEHAVIOUR          "MODE"
 #define GPSECHO                     true
 
-SoftwareSerial mySerial(2, 3);
+SoftwareSerial mySerial(9, 10);
 Adafruit_GPS GPS(&mySerial);
 Adafruit_BluefruitLE_UART ble(Serial1, BLUEFRUIT_UART_MODE_PIN);
 
@@ -69,17 +69,17 @@ void setup() {
     }
   }
 
-  ble.echo(false); //disable command echo from bluefruit
+  ble.echo(true); //disable command echo from bluefruit
   ble.info(); //print bluefruit info
 
   GPS.sendCommand(PMTK_SET_NMEA_OUTPUT_RMCGGA); // Request only RMCGGA data
-  GPS.sendCommand(PMTK_SET_NMEA_UPDATE_5HZ); // Updates at 5 hertz
-  GPS.sendCommand(PGCMD_ANTENNA); // Sets to internal antenna
+  GPS.sendCommand(PMTK_SET_NMEA_UPDATE_1HZ); // Updates at 5 hertz
+  //GPS.sendCommand(PGCMD_ANTENNA); // Sets to internal antenna
 
   Serial.println("Harley GPS: Starting...");
   ble.println("Harley GPS: Starting... (BLEprintout");
 
-  while (GPS.fix = 1) {
+  while (true) {
     Serial.print("Start logging...");
     ble.println("Start logging... (BLEprintout)");
     if (GPS.LOCUS_StartLogger()) {
@@ -162,14 +162,41 @@ void loop() {
     Serial.print("Satellites: ");
     Serial.println((int)GPS.satellites);
 
+    ble.print("\nTime: ");
+    ble.print(GPS.hour, DEC);
+    ble.print(":");
+    ble.print(GPS.minute, DEC);
+    ble.print(":");
+    ble.print(GPS.seconds, DEC);
+    ble.print(".");
+    ble.println(GPS.milliseconds);
+    ble.print("Date: 20");
+    ble.print(GPS.year, DEC);
+    ble.print("/");
+    ble.print(GPS.month, DEC);
+    ble.print("/");
+    ble.println(GPS.day, DEC);
+    ble.print("Fix: ");
+    ble.println((int)GPS.fix);
+    ble.print("Quality: ");
+    ble.println((int)GPS.fixquality);
+    ble.print("Satellites: ");
+    ble.println((int)GPS.satellites);
+
     Serial.print(latA, 8); 
     Serial.print(", "); 
     Serial.println(longA, 8);
+    ble.print(latA, 8); 
+    ble.print(", "); 
+    ble.println(longA, 8);
     latB = GPS.latitudeDegrees;
     longB = GPS.longitudeDegrees;
     Serial.print(latB, 8); 
     Serial.print(", "); 
     Serial.println(longB, 8);
+    ble.print(latB, 8); 
+    ble.print(", "); 
+    ble.println(longB, 8);
 
     // compute the distance between points A and B
     deltaLat = pow(((latB, 8) - (latA, 8)), 2);
@@ -188,6 +215,17 @@ void loop() {
     Serial.println(" miles.");
     Serial.print(speedMPH); 
     Serial.println(" mph");
+
+    ble.print("Change is ");
+    ble.println(change, 8);
+    ble.print("The change between two points is: ");
+    ble.println(deltaDistance, 8);
+
+    ble.print("The distance is: "); 
+    ble.print(distance, 8); 
+    ble.println(" miles.");
+    ble.print(speedMPH); 
+    ble.println(" mph");
 
     // move point B's coordinates into point A so next set of coordinates
     // will be set to new point B
